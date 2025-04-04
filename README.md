@@ -25,7 +25,9 @@ The EVM GNU Privacy Guard Signature Verifier
 tool checks if a file is cryptographically signed
 by an Ethereum Virtual Machine-compatible blockchain
 network user using one of its
-EVM OpenPGP Key Server self-published keys.
+[EVM OpenPGP Key Server](
+  https://github.com/themartiancompany/evm-openpgp-keyserver)
+self-published keys.
 
 The EVM GNU Privacy Guard Signature Verifier
 tool is written using the
@@ -34,6 +36,14 @@ tool is written using the
 library.
 
 It uses
+[GPG Signature Info](
+  https://github.com/themartiancompany/gpg-signature-info)
+to read the fingerprint which has been used to sign the
+file and
+[GPG Signature Verify](
+  https://github.com/themartiancompany/gpg-signature-verify)
+to check whether the file has been signed with one
+of the Key Server keys.
 
 ## Installation
 

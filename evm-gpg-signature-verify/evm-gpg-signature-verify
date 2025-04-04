@@ -168,7 +168,7 @@ _evm_gpg_signature_verify() {
     _verified="$( \
       gpg-signature-verify \
         "${_target_file}" \
-	"${_key}"|| \
+        "${_key}"|| \
       true)"
     if [[ "${_verified}" != "" ]]; then
       break
