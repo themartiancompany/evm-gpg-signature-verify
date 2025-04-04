@@ -1,0 +1,354 @@
+#!/usr/bin/env bash
+
+# SPDX-License-Identifier: AGPL-3.0
+
+#    ----------------------------------------------------------------------
+#    Copyright © 2024, 2025  Pellegrino Prevete
+#
+#    All rights reserved
+#    ----------------------------------------------------------------------
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+_bin="$( \
+  dirname \
+    "$( \
+      command \
+        -v \
+	  "env")")"
+_lib="$( \
+  realpath \
+    "${_bin}/../lib")"
+_crash_bash="${_lib}/libcrash-bash/crash-bash"
+_sourced \
+  "${_crash_bash}" 2>/dev/null || \
+  source \
+    "${_crash_bash}"
+
+# shellcheck disable=SC2034
+_global_variables() {
+  verify_date=""
+  keys_update=""
+  gnupg_home=""
+  cache_dir=""
+  color=""
+  quiet=""
+}
+
+# Check all required programs
+# are available
+_requirements() {
+  _check_cmd \
+    'evm-openpgp-key-receive' \
+    'evm-openpgp-keyserver'
+  _check_cmd \
+    'gpg-signature-info'
+  _check_cmd \
+    'gpg-signature-verify'
+}
+
+_keys_publisher_find() {
+  local \
+    _dir="${1}" \
+    _publisher="${2}" \
+    _find_opts=()
+  _msg=(
+    "Looking for keys by publisher '${_publisher}'"
+    "in local EVM OpenPGP Key Server database"
+    "'${_dir}'."
+  )
+  _msg_info \
+    "${_msg[*]}"
+  _keys_publisher=()
+  _find_opts+=(
+    -type
+      "f"
+    -name
+      "${_publisher}.*.asc"
+    -print0
+  )
+  _msg=(
+    "Running find with options"
+    "'${_find_opts[@]}'."
+  )
+  _msg_info \
+    "${_msg[*]}"
+  mapfile \
+    -d \
+    $'\0' \
+    _keys_publisher < \
+    <(find \
+        "${_dir}" \
+        "${_find_opts[@]}" 2>/dev/null || \
+      true)
+}
+
+_keys_publisher_get() {
+  local \
+    _evm_openpgp_key_receive_opts=()
+  if [[ "${quiet}" == "n" ]]; then
+    _evm_openpgp_key_receive_opts+=(
+      -v
+    )
+  fi
+  _keys_publisher_find \
+    "${_evm_openpgp_keyserver_db_dir}" \
+    "${_evm_address}"
+  if [[ "${_keys_publisher[*]}" == "" ]] || \
+     [[ "${keys_update}" == "y" ]]; then
+    _msg=(
+      "No OpenPGP public keys found for"
+      "address '${_evm_address}', downloading."
+    )
+    _msg_info \
+      "${_msg[*]}"
+    evm-openpgp-key-receive \
+      "${_evm_openpgp_key_receive_opts[@]}" \
+      "${_evm_address}"
+  fi
+  _keys_publisher_find \
+    "${_evm_openpgp_keyserver_db_dir}" \
+    "${_evm_address}"
+  if [[ "${_keys_publisher[*]}" == "" ]]; then
+    _msg=(
+      "No valid OpenPGP public keys found for"
+      "address '${_evm_address}' on Key Server."
+    )
+    _msg_error \
+      "${_msg[*]}" \
+      1
+  fi
+}
+
+_evm_gpg_signature_verify() {
+  local \
+    _keys_update="${1}" \
+    _gnupg_home="${2}" \
+    _cache_dir="${3}" \
+    _target_file="${4}" \
+    _evm_address="${5}" \
+    _command_args=() \
+    _keys_publisher=() \
+    _gpg_key_info_opts=() \
+    _gpg_out \
+    _file_fingerprint \
+    _target_fingerprint \
+    _key \
+    _evm_openpgp_keyserver_db_dir \
+    _verified
+  shift \
+    5
+  _command_args=(
+    "$@"
+  )
+  _evm_openpgp_keyserver_db_dir="${HOME}/.cache/evm-openpgp-keyserver/receive"
+  _gpg_key_info_opts+=(
+    -o
+      "fingerprint"
+  )
+  _gpg_signature_info_opts+=(
+    -t
+      "fingerprint"
+  )
+  _file_fingerprint="$( \
+    gpg-signature-info \
+      "${_gpg_signature_info_opts[@]}" \
+      "${_target_file}")"
+  _keys_publisher_get
+  _verified=""
+  for _key in "${_keys_publisher[@]}"; do
+    _verified="$( \
+      gpg-signature-verify \
+        "${_target_file}" \
+	"${_key}"|| \
+      true)"
+    if [[ "${_verified}" != "" ]]; then
+      break
+    fi
+  done
+  if [[ "${_verified}" != "" ]]; then
+    _msg=(
+      "File '${_target_file}' is correctly signed"
+      "by user '${_evm_address}' using key '${_key}'"
+      "with fingerprint '${_file_fingerprint}'."
+    )
+    echo \
+      "${_msg[*]}"
+  elif [[ "${_verified}" == "" ]]; then
+    _msg=(
+      "File '${_target_file}' signed with key"
+      "'${_file_fingerprint}' is not signed with any"
+      "of the public keys '${_keys_publisher[*]}' of"
+      "user '${_evm_address}'."
+    )
+    _msg_error \
+      "${_msg[*]}" \
+      1
+  fi
+}
+
+# Set defaults and, if present, overrides
+# command line option parameters
+_set_overrides() {
+  if [[ -v override_color ]]; then
+    color="${override_color}"
+  elif [[ -z "${color}" ]]; then
+    color="n"
+  fi
+  if [[ -v override_quiet ]]; then
+    quiet="${override_quiet}"
+  elif [[ -z "${quiet}" ]]; then
+    quiet="y"
+  fi
+  _set_override \
+    "verify" \
+    "date" \
+    "$(_get_date_human)"
+  _set_override \
+    "cache" \
+    "dir" \
+    "${HOME}/.cache/${app_name}"
+  _set_override \
+    "address" \
+    "only" \
+    "n"
+  _set_override \
+    "keys" \
+    "update" \
+    "n"
+  _set_override \
+    "gnupg" \
+    "home" \
+    "${HOME}/.config/${app_name}/gnupg"
+}
+
+# Show help usage, with an exit status.
+# $1: exit status number.
+_usage() {
+  local \
+    _exit="${1}" \
+    _usage_text
+  IFS='' \
+    read \
+      -r \
+      -d '' \
+      _usage_text << \
+        ENDUSAGETEXT || true
+
+Verify a file is cryptographically signed with one of the public keys associated to the address.
+
+Usage:
+  ${app_name}
+    [options]
+    <target_file>
+    <evm_address>
+
+  options:
+     -U                     Whether to update the keys associated to the address.
+                            Default: ${keys_update}
+     -H <gnupg_home>        GnuPG home (for when the signature type
+			    is 'fingeprint').
+                            Default: ${gnupg_home}
+
+     -c                     Colors.
+     -h                     This message.
+     -v                     Enable verbose output
+ENDUSAGETEXT
+  _printf \
+    '%s\n' \
+    "${_usage_text}"
+  exit \
+    "${_exit}"
+}
+
+# Shows configuration options.
+_show_config() {
+  _msg_info "${app_name} configuration"
+  _msg_info "                    Verify date:   ${verify_date}"
+  _msg_info "                    Keys update:   ${keys_update}"
+  _msg_info "           GnuPG home directory:   ${gnupg_home}"
+  _msg_info "                Cache directory:   ${cache_dir}"
+  _msg_info "                    Target file:   ${target_file}"
+  _msg_info "                    EVM address:   ${evm_address}"
+}
+
+_globals
+_global_variables
+_requirements
+# shellcheck disable=SC2004
+# shellcheck disable=SC2034
+while \
+  getopts \
+    'VUH:cvh?' \
+    arg; do
+  case \
+    "${arg}" in
+    U) \
+      override_keys_update="y" ;;
+    H) \
+      override_gnupg_home="${OPTARG}" ;;
+    W) \
+      override_cache_dir="${OPTARG}" ;;
+    c) \
+      override_color="y" ;;
+    v) \
+      override_quiet="n" ;;
+    h|?) _set_overrides && \
+	 _usage \
+           0 ;;
+    *)
+    _msg_error \
+      "Invalid argument '${arg}'." \
+      0 && \
+    _set_overrides && \
+    _usage \
+      1
+    ;;
+  esac
+done
+shift \
+  $(( \
+    OPTIND - 1 \
+  ))
+if (( $# < 1 )); then
+  _msg_error \
+    "No signed file or signature file specified." \
+    0
+  _usage \
+    1
+fi
+if (( $# < 2 )); then
+  _msg_error \
+    "No address specified." \
+    0
+  _usage \
+    1
+fi
+target_file="${1}"
+shift \
+  1
+evm_address=(
+  "$@"
+)
+_set_overrides
+_show_config
+app_opts=(
+  "${keys_update}"
+  "${gnupg_home}"
+  "${cache_dir}"
+  "${target_file}"
+  "${evm_address}"
+)
+_evm_gpg_signature_verify \
+  "${app_opts[@]}"
