@@ -220,10 +220,6 @@ _set_overrides() {
     "dir" \
     "${HOME}/.cache/${app_name}"
   _set_override \
-    "address" \
-    "only" \
-    "n"
-  _set_override \
     "keys" \
     "update" \
     "n"
