@@ -56,6 +56,9 @@ _requirements() {
     'gpg-signature-info'
   _check_cmd \
     'gpg-signature-verify'
+  _check_cmd \
+    'find' \
+    'findutils'
 }
 
 _keys_publisher_find() {
@@ -140,8 +143,6 @@ _evm_gpg_signature_verify() {
     _evm_address="${5}" \
     _command_args=() \
     _keys_publisher=() \
-    _gpg_key_info_opts=() \
-    _gpg_out \
     _file_fingerprint \
     _target_fingerprint \
     _key \
@@ -153,10 +154,6 @@ _evm_gpg_signature_verify() {
     "$@"
   )
   _evm_openpgp_keyserver_db_dir="${HOME}/.cache/evm-openpgp-keyserver/receive"
-  _gpg_key_info_opts+=(
-    -o
-      "fingerprint"
-  )
   _gpg_signature_info_opts+=(
     -t
       "fingerprint"
