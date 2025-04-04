@@ -22,7 +22,7 @@
 
 
 =====================================
-GnuPG Signature Verify
+EVM GnuPG Signature Verify
 =====================================
 
 * Pellegrino Prevete <pellegrinoprevete@gmail.com>

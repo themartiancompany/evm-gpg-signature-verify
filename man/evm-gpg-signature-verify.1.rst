@@ -59,7 +59,7 @@ Options
 Bugs
 ====
 
-https://github.com/themartiancompany/gpg-signature-verify/-/issues
+https://github.com/themartiancompany/evm-gpg-signature-verify/-/issues
 
 Copyright
 =========
