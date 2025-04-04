@@ -19,7 +19,7 @@
 [comment]: <> (License along with this program.)
 [comment]: <> (If not, see <https://www.gnu.org/licenses/>.)
 
-# GNU Privacy Guard Signature Verifier
+# EVM GNU Privacy Guard Signature Verifier
 
 The EVM GNU Privacy Guard Signature Verifier
 tool checks if a file is cryptographically signed
