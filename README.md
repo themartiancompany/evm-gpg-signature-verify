@@ -59,7 +59,7 @@ or even run directly
 
 ```bash
 bash \
-  gpg-signature-verify/gpg-signature-verify
+  evm-gpg-signature-verify/evm-gpg-signature-verify
 ```
 
 The tool has officially published on the
@@ -67,7 +67,7 @@ the uncensorable
 [Ur](
   https://github.com/themartiancompany/ur)
 user repository and application store as
-`evm-signature-verify`.
+`evm-gpg-signature-verify`.
 The source code is published on the
 [Ethereum Virtual Machine File System](
   https://github.com/themartiancompany/evmfs)
@@ -77,14 +77,14 @@ To install it from there just type
 
 ```bash
 ur \
-  gpg-signature-verify
+  evm-gpg-signature-verify
 ```
 
 A censorable HTTP Github mirror of the recipe published there,
 containing a full list of the software dependencies needed to run the
 tools is hosted on
 [gpg-signature-verify-ur](
-  https://github.com/themartiancompany/gpg-signature-verify-ur).
+  https://github.com/themartiancompany/evm-gpg-signature-verify-ur).
 
 A censorable binary package has been published on the
 [Fallback User Repository](
@@ -93,7 +93,7 @@ and it can be installed with
 
 ```bash
 fur \
-  gpg-signature-verify
+  evm-gpg-signature-verify
 ```
 
 Be aware the mirrors could go offline any time as Github and more
